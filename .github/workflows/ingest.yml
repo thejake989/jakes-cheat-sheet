@@ -1,0 +1,43 @@
+name: Data ingestion
+
+on:
+  schedule:
+    # Daily during the season: nflverse stats/injuries update nightly after games.
+    - cron: "0 10 * * *"
+    # Sleeper trending moves fast on waiver days; refresh a few times a day.
+    - cron: "0 14,20 * * *"
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "NFL season to ingest (defaults to current year)"
+        required: false
+        type: string
+
+jobs:
+  nflverse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/ingest/nflverse.mjs ${{ inputs.season }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  sleeper-trending:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/ingest/sleeper-trending.mjs
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
