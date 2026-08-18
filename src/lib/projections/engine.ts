@@ -18,7 +18,12 @@ export function computeProjection(
   upcoming: UpcomingContext,
   defense: DefenseSplitLookup
 ): ProjectionResult {
-  const seasonGames = games.filter((g) => g.season === upcoming.season || g.season === upcoming.season - 1);
+  // Prefer the player's most recent 1-2 seasons of data as the baseline, but fall back to full career
+  // history if recent seasons aren't ingested yet (e.g. mid-offseason before the new season's games exist) —
+  // an empty "recent" window must never silently produce a baseline of 0, which corrupts every factor
+  // that subtracts against it.
+  const recentSeasonGames = games.filter((g) => g.season === upcoming.season || g.season === upcoming.season - 1);
+  const seasonGames = recentSeasonGames.length ? recentSeasonGames : games;
   const overallAvgStandard = average(seasonGames.map((g) => g.fantasy_points_standard));
   const overallAvgPpr = average(seasonGames.map((g) => g.fantasy_points_ppr));
 
@@ -49,8 +54,16 @@ export function computeProjection(
     age,
   ];
 
-  const projectedStandard = Math.max(0, baseStandard + sum(factors.map((f) => f.standard)));
-  const projectedPpr = Math.max(0, basePpr + sum(factors.map((f) => f.ppr)));
+  // Cap the combined adjustment magnitude relative to the base: individual factors are each modest and
+  // defensible, but several pointing the same direction at once (e.g. good matchup + home + primetime boost)
+  // could otherwise stack past any realistic single-game ceiling. +/-40% of the base is a generous but bounded swing.
+  const capMagnitudeStandard = Math.max(3, baseStandard * 0.4);
+  const capMagnitudePpr = Math.max(3, basePpr * 0.4);
+  const adjustmentStandard = clamp(sum(factors.map((f) => f.standard)), -capMagnitudeStandard, capMagnitudeStandard);
+  const adjustmentPpr = clamp(sum(factors.map((f) => f.ppr)), -capMagnitudePpr, capMagnitudePpr);
+
+  const projectedStandard = Math.max(0, baseStandard + adjustmentStandard);
+  const projectedPpr = Math.max(0, basePpr + adjustmentPpr);
 
   return { baseStandard, basePpr, projectedStandard, projectedPpr, factors };
 }
@@ -84,4 +97,7 @@ function average(nums: number[]): number {
 }
 function sum(nums: number[]): number {
   return nums.reduce((a, b) => a + b, 0);
+}
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }

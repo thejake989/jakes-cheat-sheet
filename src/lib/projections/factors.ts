@@ -17,8 +17,16 @@ export function computeRecentForm(games: HistoricalGame[], field: "fantasy_point
     weightedSum += g[field] * w;
     weightTotal += w;
   });
-  const value = weightedSum / weightTotal;
-  return { value, detail: `Recency-weighted avg over last ${recent.length} games` };
+  const recentAvg = weightedSum / weightTotal;
+
+  // Shrink the recent-form base toward the player's full career average so a short hot/cold streak
+  // (e.g. one monster game in the last 5) doesn't dominate the projection unchecked. The other factors
+  // (matchup, venue, weather, etc.) are additive adjustments on top of this — without shrinking the base
+  // itself, those adjustments compound on an already-inflated number and blow past any realistic ceiling.
+  const careerAvg = games.reduce((sum, g) => sum + g[field], 0) / games.length;
+  const value = shrink(recentAvg, recent.length, careerAvg, 5);
+
+  return { value, detail: `Recency-weighted avg over last ${recent.length} games, shrunk toward career avg (${careerAvg.toFixed(1)})` };
 }
 
 export function computeMatchupFactor(
