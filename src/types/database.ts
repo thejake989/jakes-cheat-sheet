@@ -11,6 +11,7 @@ export interface Player {
   position: Position;
   team: string | null;
   status: string | null;
+  birth_date: string | null;
 }
 
 export interface PlayerGame {

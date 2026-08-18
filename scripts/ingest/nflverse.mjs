@@ -33,6 +33,7 @@ async function ingestPlayers() {
       position: p.position,
       team: p.latest_team || null,
       status: p.status || null,
+      birth_date: p.birth_date || null,
     }));
   await upsertInBatches("players", rows, "id");
   return rows.length;
