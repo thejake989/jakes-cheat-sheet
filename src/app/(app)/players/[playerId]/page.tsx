@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PositionBadge } from "@/components/position-badge";
+import { StatusPill } from "@/components/status-pill";
 
 const CURRENT_SEASON = 2026;
 const CURRENT_WEEK = 1;
@@ -40,7 +41,6 @@ export default async function PlayerDetailPage({ params }: { params: Promise<{ p
 
   const allGames = games ?? [];
 
-  // Venue history: group by stadium
   const byStadium = new Map<string, typeof allGames>();
   for (const g of allGames) {
     if (!g.stadium) continue;
@@ -57,13 +57,11 @@ export default async function PlayerDetailPage({ params }: { params: Promise<{ p
     }))
     .sort((a, b) => b.games - a.games);
 
-  // Weather splits
   const coldGames = allGames.filter((g) => (g.roof === "outdoors" || g.roof === "open") && g.temp_f != null && g.temp_f <= 40);
   const windyGames = allGames.filter((g) => (g.roof === "outdoors" || g.roof === "open") && g.wind_mph != null && g.wind_mph >= 15);
   const domeGames = allGames.filter((g) => g.roof === "dome" || g.roof === "closed");
   const overallAvgPpr = allGames.length ? allGames.reduce((s, g) => s + g.fantasy_points_ppr, 0) / allGames.length : 0;
 
-  // Primetime split
   const primetimeGames = allGames.filter((g) => g.is_primetime);
   const regularGames = allGames.filter((g) => !g.is_primetime);
 
@@ -72,45 +70,56 @@ export default async function PlayerDetailPage({ params }: { params: Promise<{ p
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="flex items-center justify-between">
+    <div className="grid gap-8">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{player.full_name}</h1>
-          <div className="mt-1 flex items-center gap-2">
-            <Badge variant="outline">{player.position}</Badge>
-            {player.team && <span className="text-muted-foreground">{player.team}</span>}
-            {injury?.report_status && <Badge variant="destructive">{injury.report_status}</Badge>}
+          <h1 className="font-heading text-4xl font-semibold tracking-wide">{player.full_name}</h1>
+          <div className="mt-2 flex items-center gap-2">
+            <PositionBadge position={player.position} className="px-2 py-1 text-sm" />
+            {player.team && <span className="text-sm text-muted-foreground">{player.team}</span>}
+            {injury?.report_status && <StatusPill status={injury.report_status} />}
           </div>
         </div>
-        <Link href={`/compare?players=${playerId}`} className="text-sm text-muted-foreground underline underline-offset-4">
-          Compare this player
+        <Link
+          href={`/compare?players=${playerId}`}
+          className="rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+        >
+          Sit/Start this player →
         </Link>
       </div>
 
       {projection && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Week {CURRENT_WEEK} projection ({CURRENT_SEASON})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-8">
+        <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-card p-6">
+          <div className="pointer-events-none absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary opacity-[0.12] blur-3xl" />
+          <div className="relative flex flex-wrap items-end gap-10">
             <div>
-              <div className="text-2xl font-semibold">{projection.projected_points_standard.toFixed(1)}</div>
-              <div className="text-sm text-muted-foreground">Standard</div>
+              <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Week {CURRENT_WEEK} projection · {CURRENT_SEASON}
+              </div>
             </div>
             <div>
-              <div className="text-2xl font-semibold">{projection.projected_points_ppr.toFixed(1)}</div>
-              <div className="text-sm text-muted-foreground">PPR</div>
+              <div className="font-heading text-5xl leading-none tabular-nums text-foreground">
+                {projection.projected_points_standard.toFixed(1)}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">Standard</div>
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <div
+                className="font-heading text-5xl leading-none tabular-nums text-primary"
+                style={{ textShadow: "0 0 28px oklch(0.80 0.15 75 / 40%)" }}
+              >
+                {projection.projected_points_ppr.toFixed(1)}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">PPR</div>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Weather splits (PPR avg)</CardTitle>
+            <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Weather splits (PPR avg)</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm">
             <SplitRow label="Overall" value={overallAvgPpr} count={allGames.length} />
@@ -119,18 +128,18 @@ export default async function PlayerDetailPage({ params }: { params: Promise<{ p
             <SplitRow label="Dome/closed roof" value={splitAvg(domeGames)} count={domeGames.length} />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Primetime split (PPR avg)</CardTitle>
+            <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Primetime split (PPR avg)</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm">
             <SplitRow label="Primetime games" value={splitAvg(primetimeGames)} count={primetimeGames.length} />
             <SplitRow label="Regular slate" value={splitAvg(regularGames)} count={regularGames.length} />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">Home/away split (PPR avg)</CardTitle>
+            <CardTitle className="text-sm font-medium tracking-wide text-muted-foreground uppercase">Home/away split (PPR avg)</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm">
             <SplitRow label="Home" value={splitAvg(allGames.filter((g) => g.is_home))} count={allGames.filter((g) => g.is_home).length} />
@@ -139,79 +148,85 @@ export default async function PlayerDetailPage({ params }: { params: Promise<{ p
         </Card>
       </div>
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle>Venue history</CardTitle>
+          <CardTitle className="font-heading text-xl font-semibold tracking-wide">Venue history</CardTitle>
         </CardHeader>
         <CardContent>
           {!venueRows.length ? (
-            <p className="text-sm text-muted-foreground">No venue history on record.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">No venue history on record.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Stadium</TableHead>
-                  <TableHead>Games</TableHead>
-                  <TableHead>Avg Standard</TableHead>
-                  <TableHead>Avg PPR</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {venueRows.map((v) => (
-                  <TableRow key={v.stadium}>
-                    <TableCell>{v.stadium}</TableCell>
-                    <TableCell>{v.games}</TableCell>
-                    <TableCell>{v.avgStd.toFixed(1)}</TableCell>
-                    <TableCell>{v.avgPpr.toFixed(1)}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Stadium</TableHead>
+                    <TableHead>Games</TableHead>
+                    <TableHead>Avg Standard</TableHead>
+                    <TableHead>Avg PPR</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {venueRows.map((v) => (
+                    <TableRow key={v.stadium}>
+                      <TableCell className="font-medium">{v.stadium}</TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">{v.games}</TableCell>
+                      <TableCell className="tabular-nums">{v.avgStd.toFixed(1)}</TableCell>
+                      <TableCell className="tabular-nums text-primary">{v.avgPpr.toFixed(1)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle>Game log</CardTitle>
+          <CardTitle className="font-heading text-xl font-semibold tracking-wide">Game log</CardTitle>
         </CardHeader>
         <CardContent>
           {!allGames.length ? (
-            <p className="text-sm text-muted-foreground">No games on record.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">No games on record.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Season</TableHead>
-                  <TableHead>Wk</TableHead>
-                  <TableHead>Opp</TableHead>
-                  <TableHead>Venue</TableHead>
-                  <TableHead>Weather</TableHead>
-                  <TableHead>Primetime</TableHead>
-                  <TableHead>Std</TableHead>
-                  <TableHead>PPR</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allGames.map((g) => (
-                  <TableRow key={g.game_id}>
-                    <TableCell>{g.season}</TableCell>
-                    <TableCell>{g.week}</TableCell>
-                    <TableCell>
-                      {g.is_home ? "vs" : "@"} {g.opponent}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{g.stadium ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {g.temp_f != null ? `${g.temp_f}°F` : g.roof === "dome" || g.roof === "closed" ? "Indoor" : "—"}
-                      {g.wind_mph != null && g.wind_mph > 0 ? `, ${g.wind_mph}mph` : ""}
-                    </TableCell>
-                    <TableCell>{g.is_primetime ? "Yes" : ""}</TableCell>
-                    <TableCell>{g.fantasy_points_standard.toFixed(1)}</TableCell>
-                    <TableCell>{g.fantasy_points_ppr.toFixed(1)}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Season</TableHead>
+                    <TableHead>Wk</TableHead>
+                    <TableHead>Opp</TableHead>
+                    <TableHead>Venue</TableHead>
+                    <TableHead>Weather</TableHead>
+                    <TableHead>Primetime</TableHead>
+                    <TableHead>Std</TableHead>
+                    <TableHead>PPR</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {allGames.map((g) => (
+                    <TableRow key={g.game_id}>
+                      <TableCell className="tabular-nums text-muted-foreground">{g.season}</TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">{g.week}</TableCell>
+                      <TableCell className="font-medium">
+                        {g.is_home ? "vs" : "@"} {g.opponent}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{g.stadium ?? "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {g.temp_f != null ? `${g.temp_f}°F` : g.roof === "dome" || g.roof === "closed" ? "Indoor" : "—"}
+                        {g.wind_mph != null && g.wind_mph > 0 ? `, ${g.wind_mph}mph` : ""}
+                      </TableCell>
+                      <TableCell>
+                        {g.is_primetime && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                      </TableCell>
+                      <TableCell className="tabular-nums">{g.fantasy_points_standard.toFixed(1)}</TableCell>
+                      <TableCell className="tabular-nums text-primary">{g.fantasy_points_ppr.toFixed(1)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -225,7 +240,7 @@ function SplitRow({ label, value, count }: { label: string; value: number | null
       <span className="text-muted-foreground">
         {label} <span className="text-xs">({count})</span>
       </span>
-      <span className="font-medium">{value != null ? value.toFixed(1) : "—"}</span>
+      <span className="tabular-nums font-medium">{value != null ? value.toFixed(1) : "—"}</span>
     </div>
   );
 }

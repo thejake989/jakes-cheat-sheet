@@ -54,9 +54,9 @@ export function RosterRow({
         </Select>
         <Button
           size="sm"
-          variant="ghost"
           disabled={isPending}
           onClick={() => startTransition(() => removePlayerFromTeam(teamId, playerId))}
+          className="bg-destructive text-white hover:bg-destructive/85"
         >
           Remove
         </Button>

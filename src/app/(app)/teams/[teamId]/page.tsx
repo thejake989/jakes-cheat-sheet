@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { GradeTile } from "@/components/grade-tile";
 import { computeRosterStrengthRating, computeSeasonRecordRating, fantasyPointsField } from "@/lib/ratings";
 import { PlayerSearch } from "./player-search";
 import { RosterRow } from "./roster-row";
@@ -54,62 +55,49 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ tea
     const perPlayerAvg = [...byPlayer.values()].map((pts) => pts.reduce((a, b) => a + b, 0) / pts.length);
     starterAvgPoints = perPlayerAvg.length ? perPlayerAvg.reduce((a, b) => a + b, 0) / perPlayerAvg.length : 0;
   }
-  // League-average baseline: until the projection engine (Phase 3) is live, approximate with a fixed
-  // per-starter fantasy-point baseline; this keeps the rating meaningful without fabricating a cross-team average.
   const leagueAvgPoints = team.scoring_format === "ppr" ? 12 : 9;
   const rosterRating = computeRosterStrengthRating({ starterAvgPoints, leagueAvgPoints });
 
   const rosteredIds = (rosterRows ?? []).map((r) => r.player_id);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">{team.name}</h1>
-          <Badge variant="secondary" className="mt-1">
+          <h1 className="font-heading text-4xl font-semibold tracking-wide">{team.name}</h1>
+          <Badge variant="secondary" className="mt-2 font-body text-xs font-medium">
             {team.scoring_format === "ppr" ? "PPR" : "Standard"} scoring
           </Badge>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Roster strength</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{rosterRating.grade}</div>
-            <p className="text-sm text-muted-foreground">
-              Starters avg {rosterRating.starterAvgPoints.toFixed(1)} pts/game (
-              {rosterRating.vsLeagueAvg >= 0 ? "+" : ""}
-              {(rosterRating.vsLeagueAvg * 100).toFixed(0)}% vs. baseline)
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Season record</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold">{seasonRating.grade}</div>
-            <p className="text-sm text-muted-foreground">
-              {seasonRating.wins}-{seasonRating.losses}
-              {seasonRating.ties ? `-${seasonRating.ties}` : ""} ({(seasonRating.winPct * 100).toFixed(0)}% win rate)
-            </p>
-          </CardContent>
-        </Card>
+        <GradeTile
+          label="Roster strength"
+          grade={rosterRating.grade}
+          detail={`Starters avg ${rosterRating.starterAvgPoints.toFixed(1)} pts/game (${
+            rosterRating.vsLeagueAvg >= 0 ? "+" : ""
+          }${(rosterRating.vsLeagueAvg * 100).toFixed(0)}% vs. baseline)`}
+        />
+        <GradeTile
+          label="Season record"
+          grade={seasonRating.grade}
+          detail={`${seasonRating.wins}-${seasonRating.losses}${seasonRating.ties ? `-${seasonRating.ties}` : ""} (${(
+            seasonRating.winPct * 100
+          ).toFixed(0)}% win rate)`}
+        />
       </div>
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle>Roster</CardTitle>
+          <CardTitle className="font-heading text-xl font-semibold tracking-wide">Roster</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <PlayerSearch teamId={teamId} rosteredIds={rosteredIds} />
           <Separator />
           <div className="grid gap-2">
             {!rosterRows?.length ? (
-              <p className="text-sm text-muted-foreground">No players yet. Search above to add your roster.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No players yet. Search above to add your roster.</p>
             ) : (
               rosterRows.map((r) => {
                 const player = Array.isArray(r.players) ? r.players[0] : r.players;
@@ -131,28 +119,36 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ tea
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
-          <CardTitle>Weekly results</CardTitle>
+          <CardTitle className="font-heading text-xl font-semibold tracking-wide">Weekly results</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <RecordResultForm teamId={teamId} currentSeason={CURRENT_SEASON} />
           <Separator />
           <div className="grid gap-1">
             {!results?.length ? (
-              <p className="text-sm text-muted-foreground">No results recorded yet.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No results recorded yet.</p>
             ) : (
               results.map((r) => (
-                <div key={`${r.season}-${r.week}`} className="flex items-center justify-between text-sm">
-                  <span>
+                <div key={`${r.season}-${r.week}`} className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm">
+                  <span className="text-muted-foreground">
                     {r.season} Week {r.week}
                   </span>
                   <span className="flex items-center gap-2">
-                    <Badge variant={r.result === "win" ? "default" : r.result === "loss" ? "destructive" : "secondary"}>
+                    <Badge
+                      className={
+                        r.result === "win"
+                          ? "bg-[oklch(0.62_0.17_145/0.2)] text-[oklch(0.75_0.16_145)]"
+                          : r.result === "loss"
+                            ? "bg-destructive/15 text-[oklch(0.78_0.16_25)]"
+                            : "bg-secondary text-secondary-foreground"
+                      }
+                    >
                       {r.result.toUpperCase()}
                     </Badge>
                     {r.team_score != null && r.opponent_score != null && (
-                      <span className="text-muted-foreground">
+                      <span className="tabular-nums text-muted-foreground">
                         {r.team_score} - {r.opponent_score}
                       </span>
                     )}
