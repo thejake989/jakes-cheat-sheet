@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,9 @@ function ComparisonTable({ players, onRemove }: { players: ComparisonPlayer[]; o
               <th key={p.id} className="border-b p-2 text-left align-bottom">
                 <div className="grid gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold">{p.full_name}</span>
+                    <Link href={`/players/${p.id}`} className="font-semibold underline-offset-4 hover:underline">
+                      {p.full_name}
+                    </Link>
                     <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => onRemove(p.id)}>
                       Remove
                     </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +29,9 @@ export function RosterRow({
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
       <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium">{fullName}</span>
+        <Link href={`/players/${playerId}`} className="font-medium underline-offset-4 hover:underline">
+          {fullName}
+        </Link>
         <Badge variant="outline">{position}</Badge>
         {team && <span className="text-muted-foreground">{team}</span>}
       </div>
